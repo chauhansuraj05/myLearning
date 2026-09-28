@@ -1,0 +1,117 @@
+Short answer: **❌ NO, not always.**
+Long answer (important for exams & interviews) 👇
+
+---
+
+## 🔴 Can you use this format safely?
+
+```java
+this.name.equals(other.name);
+this.age.equals(other.age);
+this.bonus.equals(other.bonus);
+```
+
+### ❌ **NOT SAFE in general**
+
+* `String`, `Integer`, `Double` are **objects**
+* Objects **can be `null`**
+* Calling `.equals()` on `null` causes **NullPointerException**
+
+---
+
+## 💥 When does it CRASH?
+
+```java
+String name = null;
+String otherName = "Ravi";
+
+name.equals(otherName); // ❌ NullPointerException
+```
+
+Same for:
+
+* `Integer`
+* `Double`
+* Any object
+
+---
+
+## ✅ When CAN you use this format?
+
+You can safely use:
+
+```java
+this.name.equals(other.name);
+```
+
+### ✔ ONLY IF:
+
+* You **guarantee** the value is **never null**
+* Example:
+
+  * Mandatory fields
+  * Validated in constructor
+  * Final fields
+
+---
+
+## 🟢 SAFE ALTERNATIVE (BEST PRACTICE)
+
+```java
+Objects.equals(this.name, other.name);
+```
+
+✔ No crash
+✔ Handles `null`
+✔ Interview-approved
+
+---
+
+## 📊 Comparison Table (Very Important)
+
+| Format                                  | Null Safe | Recommended |
+| --------------------------------------- | --------- | ----------- |
+| `this.name == other.name`               | ❌         | ❌           |
+| `this.name.equals(other.name)`          | ❌         | ⚠️          |
+| `Objects.equals(this.name, other.name)` | ✅         | ✅           |
+
+Same applies to:
+
+* `String`
+* `Integer`
+* `Double`
+* Any object
+
+---
+
+## 🎯 Perfect Interview Answer
+
+> “Calling `.equals()` directly on objects can cause NullPointerException.
+> `Objects.equals()` is preferred because it safely handles null values.”
+
+---
+
+## 🧠 One-line Rule (Remember This)
+
+> **Never call `.equals()` on a variable unless you are 100% sure it is not null.**
+
+---
+
+## ✅ Best Recommendation
+
+For real projects, exams, interviews:
+
+```java
+Objects.equals(a, b)
+```
+
+---
+
+If you want:
+
+* 🔹 How `Objects.equals()` works internally
+* 🔹 How Java handles null in JVM
+* 🔹 How to force non-null fields
+* 🔹 `hashCode()` with same rule
+
+Just tell me 👍

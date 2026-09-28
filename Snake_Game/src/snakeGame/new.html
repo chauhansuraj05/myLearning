@@ -1,0 +1,561 @@
+package snakeGame;
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake</title>
+    <style>
+      /* ── Fonts ── */
+      @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+      /* ── Reset & Base ── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0a0a0a;
+        --panel-bg: #111;
+        --border: #222;
+        --accent: #4ade80;
+        --accent2: #22c55e;
+        --apple: #ef4444;
+        --head: #86efac;
+        --body: #4ade80;
+        --text: #d1fae5;
+        --dim: #6b7280;
+        --font: 'Press Start 2P', monospace;
+      }
+
+      html,
+      body {
+        height: 100%;
+        background: var(--bg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font);
+        color: var(--text);
+        user-select: none;
+      }
+
+      /* subtle scanline effect */
+      body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(
+          to bottom,
+          transparent 0px,
+          transparent 3px,
+          rgba(0, 0, 0, 0.08) 3px,
+          rgba(0, 0, 0, 0.08) 4px
+        );
+        pointer-events: none;
+        z-index: 100;
+      }
+
+      /* ── Title ── */
+      h1 {
+        font-size: clamp(0.9rem, 3vw, 1.4rem);
+        letter-spacing: 0.3em;
+        color: var(--accent);
+        text-shadow:
+          0 0 12px var(--accent),
+          0 0 30px rgba(74, 222, 128, 0.3);
+        margin-bottom: 16px;
+        text-transform: uppercase;
+      }
+
+      /* ── Game wrapper ── */
+      #game-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        border: 2px solid #1a1a1a;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow:
+          0 0 0 1px #000,
+          0 0 40px rgba(74, 222, 128, 0.08),
+          0 8px 32px rgba(0, 0, 0, 0.6);
+      }
+
+      /* ── HUD bar ── */
+      #hud {
+        width: 100%;
+        background: #0d0d0d;
+        border-bottom: 2px solid var(--border);
+        padding: 8px 14px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.55rem;
+        letter-spacing: 0.08em;
+        color: var(--dim);
+      }
+
+      #hud .val {
+        color: var(--accent);
+        font-size: 0.65rem;
+      }
+
+      /* ── Canvas ── */
+      canvas {
+        display: block;
+        background: #000;
+        image-rendering: pixelated;
+      }
+
+      /* ── Overlay ── */
+      #overlay {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: rgba(0, 0, 0, 0.82);
+        border-radius: 4px;
+      }
+
+      #overlay h2 {
+        font-size: clamp(0.7rem, 2.5vw, 1rem);
+        letter-spacing: 0.15em;
+        color: var(--accent);
+        text-shadow: 0 0 10px var(--accent);
+      }
+
+      #overlay h2.gameover {
+        color: var(--apple);
+        text-shadow: 0 0 10px var(--apple);
+      }
+
+      #overlay p {
+        font-size: 0.5rem;
+        color: var(--dim);
+        letter-spacing: 0.1em;
+        line-height: 2;
+        text-align: center;
+      }
+
+      #overlay .final-score {
+        font-size: 0.6rem;
+        color: var(--text);
+      }
+
+      /* ── Button ── */
+      button {
+        font-family: var(--font);
+        font-size: 0.55rem;
+        letter-spacing: 0.15em;
+        padding: 10px 22px;
+        background: transparent;
+        border: 2px solid var(--accent);
+        color: var(--accent);
+        cursor: pointer;
+        text-transform: uppercase;
+        border-radius: 3px;
+        transition:
+          background 0.15s,
+          box-shadow 0.15s;
+      }
+
+      button:hover {
+        background: rgba(74, 222, 128, 0.1);
+        box-shadow: 0 0 16px rgba(74, 222, 128, 0.3);
+      }
+
+      /* ── Controls hint ── */
+      #controls-hint {
+        margin-top: 12px;
+        font-size: 0.42rem;
+        color: #333;
+        letter-spacing: 0.1em;
+        text-align: center;
+        line-height: 2.2;
+      }
+
+      /* ── Canvas container (for overlay positioning) ── */
+      #canvas-container {
+        position: relative;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🐍 Snake</h1>
+
+    <div id="game-wrapper">
+      <div id="hud">
+        <div>SCORE &nbsp;<span class="val" id="scoreEl">0</span></div>
+        <div>HIGH &nbsp;<span class="val" id="highEl">0</span></div>
+        <div>LENGTH &nbsp;<span class="val" id="lenEl">3</span></div>
+      </div>
+
+      <div id="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="overlay">
+          <h2 id="overlayTitle">SNAKE</h2>
+          <p id="overlayMsg">
+            Use Arrow Keys or WASD<br />to control the snake
+          </p>
+          <div class="final-score" id="finalScore" style="display: none"></div>
+          <button id="startBtn">▶ START</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="controls-hint">
+      ↑ W &nbsp;|&nbsp; ↓ S &nbsp;|&nbsp; ← A &nbsp;|&nbsp; → D
+      &nbsp;&nbsp;|&nbsp;&nbsp; SPACE = Pause
+    </div>
+
+    <script>
+      // ── Constants (mirrored from Board.java) ──────────────────────────────────
+      const B_WIDTH = 300;
+      const B_HEIGHT = 300;
+      const DOT_SIZE = 10;
+      const ALL_DOTS = 900;
+      const RAND_POS = 29;
+      const DELAY = 140; // ms — same as Board.java Timer delay
+
+      // ── Canvas setup ──────────────────────────────────────────────────────────
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = B_WIDTH;
+      canvas.height = B_HEIGHT;
+
+      // Size the overlay to match canvas
+      const overlay = document.getElementById('overlay');
+      overlay.style.width = B_WIDTH + 'px';
+      overlay.style.height = B_HEIGHT + 'px';
+      overlay.style.top = '0px';
+      overlay.style.left = '0px';
+
+      // ── HUD elements ─────────────────────────────────────────────────────────
+      const scoreEl = document.getElementById('scoreEl');
+      const highEl = document.getElementById('highEl');
+      const lenEl = document.getElementById('lenEl');
+
+      // ── Game state (mirrors Board.java fields) ────────────────────────────────
+      const x = new Array(ALL_DOTS).fill(0);
+      const y = new Array(ALL_DOTS).fill(0);
+
+      let dots;
+      let apple_x, apple_y;
+      let leftDirection, rightDirection, upDirection, downDirection;
+      let inGame;
+      let score = 0;
+      let high = 0;
+      let paused = false;
+      let gameInterval = null;
+
+      // ── locateApple() — same logic as Board.java ──────────────────────────────
+      function locateApple() {
+        let r = Math.floor(Math.random() * RAND_POS);
+        apple_x = r * DOT_SIZE;
+        r = Math.floor(Math.random() * RAND_POS);
+        apple_y = r * DOT_SIZE;
+      }
+
+      // ── initGame() — same logic as Board.java ────────────────────────────────
+      function initGame() {
+        dots = 3;
+        leftDirection = false;
+        rightDirection = true;
+        upDirection = false;
+        downDirection = false;
+        inGame = true;
+        score = 0;
+        paused = false;
+
+        for (let z = 0; z < dots; z++) {
+          x[z] = 50 - z * DOT_SIZE;
+          y[z] = 50;
+        }
+
+        locateApple();
+        updateHUD();
+      }
+
+      // ── checkApple() — same logic as Board.java ──────────────────────────────
+      function checkApple() {
+        if (x[0] === apple_x && y[0] === apple_y) {
+          dots++;
+          score++;
+          if (score > high) high = score;
+          locateApple();
+          updateHUD();
+        }
+      }
+
+      // ── move() — same logic as Board.java ────────────────────────────────────
+      function move() {
+        for (let z = dots; z > 0; z--) {
+          x[z] = x[z - 1];
+          y[z] = y[z - 1];
+        }
+        if (leftDirection) x[0] -= DOT_SIZE;
+        if (rightDirection) x[0] += DOT_SIZE;
+        if (upDirection) y[0] -= DOT_SIZE;
+        if (downDirection) y[0] += DOT_SIZE;
+      }
+
+      // ── checkCollision() — same logic as Board.java ──────────────────────────
+      function checkCollision() {
+        for (let z = dots; z > 0; z--) {
+          if (z > 4 && x[0] === x[z] && y[0] === y[z]) {
+            inGame = false;
+          }
+        }
+        if (y[0] >= B_HEIGHT) inGame = false;
+        if (y[0] < 0) inGame = false;
+        if (x[0] >= B_WIDTH) inGame = false;
+        if (x[0] < 0) inGame = false;
+
+        if (!inGame) {
+          clearInterval(gameInterval);
+          gameInterval = null;
+          setTimeout(showGameOver, 300);
+        }
+      }
+
+      // ── doDrawing() — replaces Board.java paintComponent ─────────────────────
+      function doDrawing() {
+        // Black background
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, B_WIDTH, B_HEIGHT);
+
+        if (inGame) {
+          // Draw grid dots (subtle)
+          ctx.fillStyle = '#111111';
+          for (let gx = 0; gx < B_WIDTH; gx += DOT_SIZE) {
+            for (let gy = 0; gy < B_HEIGHT; gy += DOT_SIZE) {
+              ctx.fillRect(gx + 4, gy + 4, 2, 2);
+            }
+          }
+
+          // Draw apple (replaces apple image)
+          ctx.fillStyle = '#ef4444';
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(
+            apple_x + DOT_SIZE / 2,
+            apple_y + DOT_SIZE / 2,
+            DOT_SIZE / 2 - 1,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Draw snake body (replaces ball image)
+          for (let z = dots - 1; z >= 1; z--) {
+            const t = z / dots;
+            ctx.fillStyle = lerpColor('#22c55e', '#14532d', t);
+            ctx.fillRect(x[z] + 1, y[z] + 1, DOT_SIZE - 2, DOT_SIZE - 2);
+          }
+
+          // Draw head (replaces head image)
+          ctx.fillStyle = '#86efac';
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = '#4ade80';
+          ctx.fillRect(x[0] + 1, y[0] + 1, DOT_SIZE - 2, DOT_SIZE - 2);
+          ctx.shadowBlur = 0;
+
+          // Eyes on head
+          ctx.fillStyle = '#000';
+          if (rightDirection) {
+            ctx.fillRect(x[0] + 7, y[0] + 2, 2, 2);
+            ctx.fillRect(x[0] + 7, y[0] + 6, 2, 2);
+          } else if (leftDirection) {
+            ctx.fillRect(x[0] + 1, y[0] + 2, 2, 2);
+            ctx.fillRect(x[0] + 1, y[0] + 6, 2, 2);
+          } else if (upDirection) {
+            ctx.fillRect(x[0] + 2, y[0] + 1, 2, 2);
+            ctx.fillRect(x[0] + 6, y[0] + 1, 2, 2);
+          } else if (downDirection) {
+            ctx.fillRect(x[0] + 2, y[0] + 7, 2, 2);
+            ctx.fillRect(x[0] + 6, y[0] + 7, 2, 2);
+          }
+        } else {
+          // gameOver text (replaces Board.java gameOver(g))
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 14px Helvetica, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Game Over', B_WIDTH / 2, B_HEIGHT / 2);
+        }
+      }
+
+      // ── actionPerformed equivalent (called every DELAY ms) ───────────────────
+      function gameTick() {
+        if (paused) return;
+        if (inGame) {
+          checkApple();
+          checkCollision();
+          move();
+        }
+        doDrawing();
+      }
+
+      // ── Helpers ───────────────────────────────────────────────────────────────
+      function updateHUD() {
+        scoreEl.textContent = score;
+        highEl.textContent = high;
+        lenEl.textContent = dots;
+      }
+
+      function lerpColor(a, b, t) {
+        const ah = parseInt(a.slice(1), 16),
+          bh = parseInt(b.slice(1), 16);
+        const ar = (ah >> 16) & 0xff,
+          ag = (ah >> 8) & 0xff,
+          ab = ah & 0xff;
+        const br = (bh >> 16) & 0xff,
+          bg = (bh >> 8) & 0xff,
+          bb = bh & 0xff;
+        const r = Math.round(ar + (br - ar) * t)
+          .toString(16)
+          .padStart(2, '0');
+        const g = Math.round(ag + (bg - ag) * t)
+          .toString(16)
+          .padStart(2, '0');
+        const bl = Math.round(ab + (bb - ab) * t)
+          .toString(16)
+          .padStart(2, '0');
+        return `#${r}${g}${bl}`;
+      }
+
+      function showGameOver() {
+        document.getElementById('overlayTitle').textContent = 'GAME OVER';
+        document.getElementById('overlayTitle').className = 'gameover';
+        document.getElementById('overlayMsg').style.display = 'none';
+        const fs = document.getElementById('finalScore');
+        fs.style.display = 'block';
+        fs.textContent = `Score: ${score}  |  Best: ${high}`;
+        document.getElementById('startBtn').textContent = '▶ PLAY AGAIN';
+        overlay.style.display = 'flex';
+      }
+
+      // ── Start / Restart ───────────────────────────────────────────────────────
+      function startGame() {
+        overlay.style.display = 'none';
+        document.getElementById('overlayTitle').textContent = 'SNAKE';
+        document.getElementById('overlayTitle').className = '';
+        document.getElementById('overlayMsg').style.display = 'block';
+        document.getElementById('finalScore').style.display = 'none';
+
+        if (gameInterval) clearInterval(gameInterval);
+        initGame();
+        gameInterval = setInterval(gameTick, DELAY);
+      }
+
+      document.getElementById('startBtn').addEventListener('click', startGame);
+
+      // ── Keyboard input — mirrors TAdapter.keyPressed from Board.java ──────────
+      document.addEventListener('keydown', (e) => {
+        if (!inGame && e.key !== ' ') return;
+
+        switch (e.key) {
+          case 'ArrowLeft':
+          case 'a':
+          case 'A':
+            if (!rightDirection) {
+              leftDirection = true;
+              upDirection = false;
+              downDirection = false;
+            }
+            break;
+          case 'ArrowRight':
+          case 'd':
+          case 'D':
+            if (!leftDirection) {
+              rightDirection = true;
+              upDirection = false;
+              downDirection = false;
+            }
+            break;
+          case 'ArrowUp':
+          case 'w':
+          case 'W':
+            if (!downDirection) {
+              upDirection = true;
+              rightDirection = false;
+              leftDirection = false;
+            }
+            break;
+          case 'ArrowDown':
+          case 's':
+          case 'S':
+            if (!upDirection) {
+              downDirection = true;
+              rightDirection = false;
+              leftDirection = false;
+            }
+            break;
+          case ' ':
+            if (inGame) paused = !paused;
+            break;
+        }
+
+        if (
+          ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '].includes(
+            e.key
+          )
+        ) {
+          e.preventDefault();
+        }
+      });
+
+      // ── Touch / swipe support ─────────────────────────────────────────────────
+      let touchStartX = 0,
+        touchStartY = 0;
+      canvas.addEventListener(
+        'touchstart',
+        (e) => {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        },
+        { passive: true }
+      );
+      canvas.addEventListener(
+        'touchend',
+        (e) => {
+          const dx = e.changedTouches[0].clientX - touchStartX;
+          const dy = e.changedTouches[0].clientY - touchStartY;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > 0 && !leftDirection) {
+              rightDirection = true;
+              upDirection = false;
+              downDirection = false;
+            } else if (dx < 0 && !rightDirection) {
+              leftDirection = true;
+              upDirection = false;
+              downDirection = false;
+            }
+          } else {
+            if (dy > 0 && !upDirection) {
+              downDirection = true;
+              rightDirection = false;
+              leftDirection = false;
+            } else if (dy < 0 && !downDirection) {
+              upDirection = true;
+              rightDirection = false;
+              leftDirection = false;
+            }
+          }
+        },
+        { passive: true }
+      );
+    </script>
+  </body>
+</html>
